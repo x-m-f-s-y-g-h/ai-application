@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>火柴人 · 键盘对决</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --p1:#2563eb; --p1bg:#e9f1ff; --p1line:#7ea6f5;
+    --p2:#e5484d; --p2bg:#ffecec; --p2line:#f39aa0;
+    --gold:#b57d00; --goldfill:#ffcf33;
+    --ink:#1b2333; --sub:#5a6b86;
+    --panel:#ffffff; --line:#c7d2e6; --line2:#9fb0d0;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(circle at 50% -10%, #ffffff 0%, #dfe7f5 70%),
+      #e7edf7;
+    color:var(--ink);
+    font-family:"Press Start 2P", "PingFang SC","Microsoft YaHei",monospace;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100%; overflow:hidden;
+  }
+  #stage{
+    width:1000px; max-width:98vw; aspect-ratio: 1000/560;
+    position:relative; border:4px solid var(--line2);
+    box-shadow:0 0 0 3px #fff, 0 12px 40px rgba(40,60,110,.25);
+    background:var(--panel); overflow:hidden;
+  }
+  .screen{position:absolute; inset:0; display:none;}
+  .screen.on{display:flex;}
+
+  /* ===== 通用字 ===== */
+  .tiny{font-size:13px; line-height:1.7; letter-spacing:.5px;}
+  .zh{font-family:"PingFang SC","Microsoft YaHei",sans-serif;}
+
+  /* ===== 菜单 / 选择模式 ===== */
+  #menu{flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; padding:20px; background:linear-gradient(180deg,#ffffff,#eef3fb);}
+  #menu h1{font-size:36px; color:var(--ink); text-shadow:3px 3px 0 #d7e0f2;}
+  #menu h1 .s1{color:var(--p1);} #menu h1 .s2{color:var(--p2);}
+  #menu .sub{font-size:15px; color:var(--sub);}
+  .menubtns{display:flex; gap:20px; margin-top:2px;}
+  .mbtn{font-family:"PingFang SC","Microsoft YaHei",sans-serif; font-size:17px; font-weight:bold;
+        padding:16px 26px; border-radius:12px; border:3px solid; cursor:pointer; color:#fff;
+        box-shadow:0 5px 0 rgba(30,45,80,.18); transition:transform .05s;}
+  .mbtn:hover{filter:brightness(1.05);} .mbtn:active{transform:translateY(3px); box-shadow:0 2px 0 rgba(30,45,80,.18);}
+  .b-pvp{background:var(--p1); border-color:#1748c0;}
+  .b-pve{background:var(--p2); border-color:#c22d33;}
+  .ctrlwrap{display:flex; gap:26px; margin-top:2px;}
+  .ctrlcard{border:3px solid var(--line); background:#fbfdff; padding:14px 18px; width:320px; text-align:left; border-radius:10px; box-shadow:0 4px 14px rgba(40,60,110,.08);}
+  .ctrlcard.c1{border-color:var(--p1);} .ctrlcard.c2{border-color:var(--p2);}
+  .ctrlcard h3{font-size:16px; margin-bottom:10px;}
+  .ctrlcard.c1 h3{color:var(--p1);} .ctrlcard.c2 h3{color:var(--p2);}
+  .krow{display:flex; justify-content:space-between; align-items:center; font-size:13px; margin:8px 0; color:#33405a;}
+  .kcap{background:var(--ink); border:2px solid #333; padding:3px 8px; border-radius:4px; color:#fff; font-size:12px;}
+  .blink{animation:bk 1s steps(2) infinite;}
+  @keyframes bk{50%{opacity:0;}}
+
+  /* ===== 打架整屏 ===== */
+  #fight{padding:0;}
+  #arena{width:100%; height:100%; display:block;}
+
+  /* ===== 对半分屏（奖励/升级/升级内部）===== */
+  .split{display:flex; width:100%; height:100%;}
+  .half{width:50%; height:100%; position:relative; padding:22px 20px 18px; overflow:hidden; display:flex; flex-direction:column;}
+  .half.h1{background:linear-gradient(180deg,#f3f8ff,var(--p1bg)); border-right:3px solid var(--line2);}
+  .half.h2{background:linear-gradient(180deg,#fff5f5,var(--p2bg)); border-left:3px solid var(--line2);}
+  .htag{position:absolute; top:0; left:0; font-size:14px; padding:7px 14px; color:#fff; border-bottom-right-radius:8px;}
+  .h1 .htag{background:var(--p1);} .h2 .htag{background:var(--p2);}
+  .htag2{position:absolute; top:0; right:0; font-size:13px; padding:7px 12px; background:var(--ink); color:#fff; border-bottom-left-radius:8px;}
+  .half h2{font-size:20px; margin:34px 0 12px; text-align:center;}
+  .h1 h2{color:var(--p1);} .h2 h2{color:var(--p2);}
+
+  /* 抽奖转盘 */
+  .draw-box{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;}
+  .reel{width:260px; height:104px; border:4px solid var(--ink); border-radius:10px; background:#fffdf5; display:flex; align-items:center; justify-content:center;
+        font-size:28px; color:var(--gold); box-shadow:0 4px 0 #e4c15a inset;}
+  .reel.spin{animation:reelPulse .12s steps(2) infinite;}
+  @keyframes reelPulse{50%{background:#fff3cf;}}
+  .coinline{font-size:16px; color:var(--gold);}
+  .hint{font-size:13px; color:var(--sub); line-height:1.9; text-align:center;}
+  .ready-badge{margin-top:8px; font-size:16px; color:#1a9e57; font-weight:bold; text-align:center; min-height:20px;}
+
+  /* 升级列表 */
+  .attrlist{flex:1; display:flex; flex-direction:column; justify-content:center; gap:11px;}
+  .attr{display:flex; align-items:center; justify-content:space-between; border:3px solid var(--line); background:#ffffff; padding:11px 13px; font-size:15px; border-radius:8px;}
+  .attr.sel{border-color:var(--gold); background:#fffbe9; box-shadow:0 0 0 2px var(--goldfill);}
+  .attr .lv{color:var(--gold); font-weight:bold;}
+  .bars{display:flex; gap:3px; margin:0 8px;}
+  .pip{width:13px; height:16px; background:#dde5f2; border:1px solid #b3c0d8; border-radius:2px;}
+  .pip.f{background:var(--goldfill); border-color:#d9a400;}
+
+  /* 升级内部详情 */
+  .detail{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center;}
+  .detail .dname{font-size:26px; color:var(--gold); font-weight:bold;}
+  .detail .drow{font-size:16px; color:#33405a; line-height:1.9;}
+  .detail .up{color:#1a9e57; font-weight:bold;} .detail .cost{color:var(--gold); font-weight:bold;}
+  .detail .no{color:#e5484d;}
+
+  .footbar{display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--sub); border-top:2px solid var(--line); padding-top:10px;}
+  .coinbadge{color:var(--gold); font-weight:bold;}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- ===================== 菜单 / 每关结束选择 ===================== -->
+  <section id="menu" class="screen on">
+    <h1><span class="s1">火柴人</span>·<span class="s2">对决</span></h1>
+    <div class="sub zh" id="menuSub">选择模式开始 · 打赢抽奖升级 · 每关结束都可重新选择</div>
+    <div class="menubtns">
+      <button id="btnPvp" class="mbtn b-pvp zh">双人游戏</button>
+      <button id="btnPve" class="mbtn b-pve zh">单人游戏（挑战电脑）</button>
+    </div>
+    <div class="ctrlwrap">
+      <div class="ctrlcard c1">
+        <h3 class="zh">1号选手（左）</h3>
+        <div class="krow zh"><span>移动 上/跳</span><span><i class="kcap">W</i></span></div>
+        <div class="krow zh"><span>左 / 右</span><span><i class="kcap">A</i> <i class="kcap">D</i></span></div>
+        <div class="krow zh"><span>下蹲防御</span><span><i class="kcap">X</i></span></div>
+        <div class="krow zh"><span>普通攻击</span><span><i class="kcap">S</i></span></div>
+        <div class="krow zh"><span>技能（耗能）</span><span><i class="kcap">C</i></span></div>
+        <div class="krow zh"><span>换武器 拳/剑/枪</span><span><i class="kcap">Q</i> <i class="kcap">Z</i> <i class="kcap">E</i></span></div>
+      </div>
+      <div class="ctrlcard c2">
+        <h3 class="zh">2号选手（右）</h3>
+        <div class="krow zh"><span>移动 上/跳</span><span><i class="kcap">O</i></span></div>
+        <div class="krow zh"><span>左 / 右</span><span><i class="kcap">J</i> <i class="kcap">L</i></span></div>
+        <div class="krow zh"><span>下蹲防御</span><span><i class="kcap">M</i></span></div>
+        <div class="krow zh"><span>普通攻击</span><span><i class="kcap">K</i></span></div>
+        <div class="krow zh"><span>技能（耗能）</span><span><i class="kcap">B</i></span></div>
+        <div class="krow zh"><span>换武器 拳/剑/枪</span><span><i class="kcap">I</i> <i class="kcap">P</i> <i class="kcap">N</i></span></div>
+      </div>
+    </div>
+    <div class="tiny blink zh" style="margin-top:2px; color:var(--gold);">点上方按钮开始 · 或按 空格 直接开始双人</div>
+  </section>
+
+  <!-- ===================== 打架整屏 ===================== -->
+  <section id="fight" class="screen">
+    <canvas id="arena" width="1000" height="560"></canvas>
+  </section>
+
+  <!-- ===================== 奖励界面（对半分） ===================== -->
+  <section id="reward" class="screen">
+    <div class="split">
+      <div class="half h1" id="rw1">
+        <div class="htag zh">1号选手</div><div class="htag2">P1</div>
+        <h2 class="zh">战斗奖励</h2>
+        <div class="draw-box">
+          <div class="coinline zh">本局金币 <b class="rw-earn">+0</b></div>
+          <div class="reel rw-reel">?</div>
+          <div class="hint zh">按 <b>C</b> 抽奖 · 抽一次<br>按 <b>Q</b> 准备进入升级<br>（或按 <b>空格/回车</b> 直接继续）</div>
+          <div class="ready-badge rw-ready"></div>
+        </div>
+        <div class="footbar"><span class="zh">总金币 <b class="coinbadge rw-total">0</b></span><span class="zh">胜场 <b class="rw-wins">0</b></span></div>
+      </div>
+      <div class="half h2" id="rw2">
+        <div class="htag zh">2号选手</div><div class="htag2">P2</div>
+        <h2 class="zh">战斗奖励</h2>
+        <div class="draw-box">
+          <div class="coinline zh">本局金币 <b class="rw-earn">+0</b></div>
+          <div class="reel rw-reel">?</div>
+          <div class="hint zh">按 <b>B</b> 抽奖 · 抽一次<br>按 <b>I</b> 准备进入升级<br>（或按 <b>空格/回车</b> 直接继续）</div>
+          <div class="ready-badge rw-ready"></div>
+        </div>
+        <div class="footbar"><span class="zh">总金币 <b class="coinbadge rw-total">0</b></span><span class="zh">胜场 <b class="rw-wins">0</b></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 升级 / 升级内部（对半分） ===================== -->
+  <section id="upgrade" class="screen">
+    <div class="split">
+      <div class="half h1" id="up1"></div>
+      <div class="half h2" id="up2"></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   火柴人 · 键盘对决  —— 单文件游戏
+   模式：pvp(双人) / pve(单人挑战电脑，左边为人、右边为AI)
+   状态：menu → fight → reward → upgrade → menu(重新选择) → fight ...
+========================================================= */
+
+const canvas  = document.getElementById('arena');
+const ctx     = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const GROUND = H - 90;
+
+const screens = {
+  menu:    document.getElementById('menu'),
+  fight:   document.getElementById('fight'),
+  reward:  document.getElementById('reward'),
+  upgrade: document.getElementById('upgrade'),
+};
+let state = 'menu';
+let gameMode = 'pvp';   // 'pvp' | 'pve'
+let started = false;    // 是否已经打过至少一局（用于菜单文案）
+function setState(s){
+  state = s;
+  for(const k in screens) screens[k].classList.toggle('on', k===s);
+}
+
+/* ---------- 键位定义 ---------- */
+const KEYS = {
+  1:{ left:'a', right:'d', up:'w', down:'x', atk:'s', skill:'c', w0:'q', w1:'z', w2:'e' },
+  2:{ left:'j', right:'l', up:'o', down:'m', atk:'k', skill:'b', w0:'i', w1:'p', w2:'n' },
+};
+const held = new Set();
+
+/* ---------- 武器 ---------- */
+const WEAPONS = [
+  { name:'拳', range:52, dmg:8,  cd:16, kb:5,  melee:true  },
+  { name:'剑', range:86, dmg:15, cd:30, kb:8,  melee:true  },
+  { name:'枪', range:0,  dmg:9,  cd:34, kb:4,  proj:true, pspeed:11, pw:16, ph:6 },
+];
+const SKILL = { cost:45, cd:48, dmg:24, kb:12, pspeed:8, pw:34, ph:22 };
+
+/* ---------- 属性（升级用） ---------- */
+const ATTRS = [
+  { key:'atk',   name:'攻击',  max:8, desc:'普攻与技能伤害提升' },
+  { key:'def',   name:'防御',  max:8, desc:'减少受到的伤害' },
+  { key:'hp',    name:'生命',  max:8, desc:'提高最大生命值' },
+  { key:'speed', name:'速度',  max:8, desc:'移动更快、更灵活' },
+];
+function costOf(lv){ return lv*60; }
+function maxHpOf(lv){ return 100 + (lv-1)*22; }
+function moveSpeedOf(lv){ return 3.2 + (lv-1)*0.45; }
+function atkMulOf(lv){ return 1 + (lv-1)*0.16; }
+function defCutOf(lv){ return Math.min(0.62,(lv-1)*0.07); }
+
+/* ---------- 玩家 ---------- */
+function makePlayer(id){
+  const isL = id===1;
+  return {
+    id, isL, name: isL?'1号选手':'2号选手',
+    ai:false, _ai:{left:false,right:false,down:false}, aiTic:0,
+    color: isL ? '#2563eb' : '#e5484d',
+    lv:{ atk:1, def:1, hp:1, speed:1 },
+    coins: 200,
+    wins: 0,
+    x:0, y:0, vx:0, vy:0, w:44, h:86, facing: isL?1:-1,
+    onGround:true, crouch:false, weapon:0,
+    hp:100, maxHp:100, energy:60, maxEnergy:100,
+    atkTimer:0, atkHasHit:false, cd:0, skillCd:0, hitStun:0, flash:0,
+    ready:false, drew:false, prize:'', spinning:false,
+    upMode:'list', sel:0,
+  };
+}
+let P1 = makePlayer(1), P2 = makePlayer(2);
+const players = [P1, P2];
+let projectiles = [];
+let roundMsg = '', roundMsgT = 0, roundOver=false, koTimer=0, winner=null;
+
+function pname(p){ return p.name; }
+
+/* ---------- 菜单文案随进度更新 ---------- */
+function refreshMenuText(){
+  const sub = document.getElementById('menuSub');
+  const pvp = document.getElementById('btnPvp');
+  if(started){
+    sub.textContent = '本关结束 · 选择下一关模式（进度已保留）';
+    pvp.textContent = '继续双人游戏';
+  } else {
+    sub.textContent = '选择模式开始 · 打赢抽奖升级 · 每关结束都可重新选择';
+    pvp.textContent = '双人游戏';
+  }
+}
+
+/* ---------- 回到选择界面（开局 & 每关结束） ---------- */
+function goMenu(){
+  refreshMenuText();
+  setState('menu');
+}
+
+/* ---------- 开始游戏（选择模式） ---------- */
+function startGame(mode){
+  gameMode = mode;
+  P1.ai = false;
+  P2.ai = (mode==='pve');
+  if(mode==='pve'){ P1.name='你（1号）'; P2.name='电脑'; }
+  else            { P1.name='1号选手';  P2.name='2号选手'; }
+  started = true;
+  startNewFight();
+}
+
+/* ---------- 回合初始化 ---------- */
+function resetForFight(){
+  P1.x = 200; P2.x = W-200-P2.w;
+  players.forEach(p=>{
+    p.maxHp = maxHpOf(p.lv.hp);
+    p.hp = p.maxHp;
+    p.maxEnergy = 100;
+    p.energy = 60;
+    p.y = GROUND - p.h; p.vx=0; p.vy=0; p.onGround=true; p.crouch=false;
+    p.atkTimer=0; p.atkHasHit=false; p.cd=0; p.skillCd=0; p.hitStun=0; p.flash=0;
+    p.weapon=0; p.aiTic=0; p._ai={left:false,right:false,down:false};
+  });
+  P1.facing=1; P2.facing=-1;
+  projectiles = [];
+  roundOver=false; winner=null; koTimer=0;
+  roundMsg='FIGHT!'; roundMsgT=90;
+}
+function startNewFight(){
+  resetForFight();
+  setState('fight');
+}
+
+/* ================= 输入抽象（人/AI 统一） ================= */
+function inputOf(p){
+  if(p.ai) return p._ai;
+  const k = KEYS[p.id];
+  return { left:held.has(k.left), right:held.has(k.right), down:held.has(k.down) };
+}
+
+/* ================= 动作（人与AI共用） ================= */
+function doJump(p){
+  if(roundOver || p.hitStun>0 || p.crouch || !p.onGround) return;
+  p.vy = -15; p.onGround=false;
+}
+function doAttack(p){
+  if(roundOver || p.hitStun>0 || p.crouch || p.cd>0) return;
+  const wep = WEAPONS[p.weapon];
+  p.cd = wep.cd; p.atkTimer = 9; p.atkHasHit=false;
+  if(wep.proj) spawnProj(p, wep.dmg*atkMulOf(p.lv.atk), wep.pspeed, wep.pw, wep.ph, wep.kb, '#f5a623');
+}
+function doSkill(p){
+  if(roundOver || p.hitStun>0 || p.crouch || p.skillCd>0 || p.energy<SKILL.cost) return;
+  p.skillCd = SKILL.cd; p.energy -= SKILL.cost;
+  spawnProj(p, SKILL.dmg*atkMulOf(p.lv.atk), SKILL.pspeed, SKILL.pw, SKILL.ph, SKILL.kb, p.color, true);
+}
+function spawnProj(p, dmg, sp, w, h, kb, color, big){
+  projectiles.push({
+    owner:p.id, x: p.facing>0? p.x+p.w : p.x-w, y: p.y + (p.crouch? p.h*0.5 : p.h*0.42),
+    w, h, vx: sp*p.facing, dmg, kb, life:120, color, big:!!big
+  });
+}
+
+/* ================= 电脑 AI ================= */
+function aiThink(){
+  const me=P2, foe=P1;
+  const ai = me._ai;
+  ai.left=ai.right=ai.down=false;
+  if(roundOver || me.hitStun>0){ return; }
+  me.aiTic++;
+
+  const dist = Math.abs((foe.x+foe.w/2)-(me.x+me.w/2));
+  const wep = WEAPONS[me.weapon];
+  const foeOnRight = (foe.x+foe.w/2) > (me.x+me.w/2);
+
+  if(me.aiTic % 130 === 0){ me.weapon = dist>300 ? 2 : (Math.random()<0.5?0:1); }
+
+  if(wep.proj){
+    if(dist < 240){ if(foeOnRight) ai.left=true; else ai.right=true; }
+    else if(dist > 520){ if(foeOnRight) ai.right=true; else ai.left=true; }
+    if(me.cd<=0 && Math.random()<0.07) doAttack(me);
+  } else {
+    const reach = wep.range + 14;
+    if(dist > reach){ if(foeOnRight) ai.right=true; else ai.left=true; }
+    else if(dist < reach*0.55 && Math.random()<0.03){ if(foeOnRight) ai.left=true; else ai.right=true; }
+    if(me.cd<=0 && dist < reach+6 && Math.random()<0.28) doAttack(me);
+  }
+
+  if(me.onGround && Math.random()<0.012) doJump(me);
+  if(me.skillCd<=0 && me.energy>=SKILL.cost && dist<540 && Math.random()<0.035) doSkill(me);
+}
+
+/* ================= 打架逻辑 ================= */
+function updateFight(){
+  if(roundMsgT>0) roundMsgT--;
+
+  if(!roundOver){
+    if(gameMode==='pve') aiThink();
+
+    for(const p of players){
+      if(p.cd>0) p.cd--;
+      if(p.skillCd>0) p.skillCd--;
+      if(p.atkTimer>0) p.atkTimer--;
+      if(p.flash>0) p.flash--;
+      if(p.energy<p.maxEnergy) p.energy=Math.min(p.maxEnergy,p.energy+0.28);
+
+      const inp = inputOf(p);
+      const spd = moveSpeedOf(p.lv.speed);
+      p.crouch = inp.down && p.onGround;   // 下蹲防御
+
+      if(p.hitStun>0){ p.hitStun--; }
+      else if(!p.crouch){
+        if(inp.left)       p.vx = -spd;
+        else if(inp.right) p.vx =  spd;
+        else p.vx *= 0.6;
+      } else {
+        p.vx *= 0.5;
+      }
+
+      const foe = p===P1?P2:P1;
+      p.facing = (foe.x + foe.w/2) >= (p.x + p.w/2) ? 1 : -1;
+
+      p.vy += 0.9;
+      p.x += p.vx; p.y += p.vy;
+      if(p.y + p.h >= GROUND){ p.y = GROUND - p.h; p.vy=0; p.onGround=true; }
+      else p.onGround=false;
+      p.x = Math.max(10, Math.min(W-10-p.w, p.x));
+    }
+
+    // 近战判定
+    for(const p of players){
+      if(p.atkTimer>0 && !p.atkHasHit){
+        const wep = WEAPONS[p.weapon];
+        if(wep.melee){
+          const foe = p===P1?P2:P1;
+          const hx = p.facing>0 ? p.x+p.w : p.x-wep.range;
+          const box = { x:hx, y:p.y+14, w:wep.range, h:p.h-24 };
+          if(overlap(box, foeBox(foe))){
+            applyHit(foe, p, wep.dmg*atkMulOf(p.lv.atk), wep.kb*p.facing);
+            p.atkHasHit=true;
+          }
+        }
+      }
+    }
+
+    // 投射物
+    for(const pr of projectiles){
+      pr.x += pr.vx; pr.life--;
+      const foe = pr.owner===1?P2:P1;
+      if(overlap({x:pr.x,y:pr.y,w:pr.w,h:pr.h}, foeBox(foe))){
+        const src = pr.owner===1?P1:P2;
+        applyHit(foe, src, pr.dmg, pr.kb*Math.sign(pr.vx));
+        pr.dead=true;
+      }
+    }
+    projectiles = projectiles.filter(pr=>!pr.dead && pr.life>0 && pr.x>-60 && pr.x<W+60);
+
+    // KO 判定
+    for(const p of players){
+      if(p.hp<=0 && !roundOver){
+        p.hp=0; roundOver=true;
+        winner = p===P1?P2:P1;
+        roundMsg = pname(winner) + ' K.O.!';
+        roundMsgT = 999; koTimer = 90;
+      }
+    }
+  } else {
+    if(koTimer>0){ koTimer--; if(koTimer===0) goReward(); }
+  }
+}
+
+function foeBox(f){ return {x:f.x, y:f.y, w:f.w, h:f.crouch?f.h*0.6:f.h }; }
+function overlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+
+function applyHit(target, src, rawDmg, kb){
+  if(target.hitStun>3 && target.hp<=0) return;
+  let dmg = rawDmg * (1 - defCutOf(target.lv.def));
+  if(target.crouch) dmg *= 0.5;         // 下蹲防御减伤
+  dmg = Math.max(1, Math.round(dmg));
+  target.hp -= dmg;
+  target.vx = kb; target.vy = -4;
+  target.hitStun = 12; target.flash = 8;
+  target.onGround=false;
+}
+
+/* ---------- 打架输入（人类边缘触发） ---------- */
+function fightEdge(kk){
+  for(const p of players){
+    if(p.ai) continue;                 // AI 不吃键盘
+    const k = KEYS[p.id];
+    if(kk===k.up)    doJump(p);
+    if(kk===k.atk)   doAttack(p);
+    if(kk===k.skill) doSkill(p);
+    if(kk===k.w0) p.weapon=0;
+    if(kk===k.w1) p.weapon=1;
+    if(kk===k.w2) p.weapon=2;
+  }
+}
+
+/* ================= 打架渲染 ================= */
+function drawFight(){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#dbe8ff'); g.addColorStop(0.6,'#eef4fc'); g.addColorStop(1,'#f6f9fd');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#c3d2ec';
+  for(let i=0;i<10;i++){ const bw=70, bh=90+((i*53)%120); ctx.fillRect(i*104, GROUND-bh, bw, bh); }
+  ctx.fillStyle='#aebfdf';
+  for(let i=0;i<14;i++){ const bw=48, bh=50+((i*37)%80); ctx.fillRect(i*74+20, GROUND-bh, bw, bh); }
+  ctx.fillStyle='#d7dfe9'; ctx.fillRect(0,GROUND,W,H-GROUND);
+  ctx.fillStyle='#c2ccda';
+  for(let x=0;x<W;x+=40) ctx.fillRect(x,GROUND,38,8);
+  ctx.strokeStyle='#9fb0d0'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,GROUND); ctx.lineTo(W,GROUND); ctx.stroke();
+
+  for(const pr of projectiles){
+    ctx.fillStyle=pr.color;
+    ctx.fillRect(pr.x,pr.y,pr.w,pr.h);
+    if(pr.big){ ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fillRect(pr.x+4,pr.y+4,pr.w-8,pr.h-8); }
+  }
+
+  for(const p of players) drawFighter(p);
+
+  drawHUD(P1, 24, 22, false);
+  drawHUD(P2, W-24-360, 22, true);
+
+  if(roundMsgT>0){
+    ctx.save();
+    ctx.font='bold 46px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign='center';
+    ctx.lineWidth=8; ctx.strokeStyle='#ffffff'; ctx.fillStyle= roundOver? '#d98600':'#1b2333';
+    ctx.strokeText(roundMsg, W/2, H/2-20);
+    ctx.fillText(roundMsg, W/2, H/2-20);
+    if(roundOver){
+      ctx.font='bold 18px "PingFang SC","Microsoft YaHei",sans-serif'; ctx.fillStyle='#5a6b86';
+      ctx.fillText('结算中...', W/2, H/2+24);
+    }
+    ctx.restore();
+  }
+}
+
+function drawFighter(p){
+  const flash = p.flash>0 && (p.flash%2===0);
+  const col = flash ? '#ff2d2d' : p.color;
+  const x=p.x, y=p.y, w=p.w;
+  const h = p.crouch? p.h*0.66 : p.h;
+  const yy = p.crouch ? y + (p.h-h) : y;
+  const cx = x + w/2;
+  const dir = p.facing;
+
+  ctx.fillStyle='rgba(30,50,90,.16)';
+  ctx.beginPath(); ctx.ellipse(cx, GROUND, w*0.5, 6, 0, 0, Math.PI*2); ctx.fill();
+
+  ctx.save();
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=6;
+
+  const headR = 13;
+  const headY = yy + headR + 2;
+  const neckY = headY + headR;
+  const hipY  = yy + h*0.60;
+  const shY   = neckY + 4;
+
+  ctx.beginPath(); ctx.arc(cx, headY, headR, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + dir*5, headY-2, 2.6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx, neckY); ctx.lineTo(cx, hipY); ctx.stroke();
+
+  const punching = p.atkTimer>0;
+  ctx.beginPath(); ctx.moveTo(cx, shY); ctx.lineTo(cx - dir*15, shY+18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, shY);
+  if(punching) ctx.lineTo(cx + dir*26, shY+2);
+  else         ctx.lineTo(cx + dir*15, shY+18);
+  ctx.stroke();
+
+  const spread = p.crouch? 11 : 14;
+  ctx.beginPath(); ctx.moveTo(cx, hipY); ctx.lineTo(cx - spread, yy+h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, hipY); ctx.lineTo(cx + spread, yy+h); ctx.stroke();
+
+  const handX = punching ? cx + dir*26 : cx + dir*15;
+  const handY = punching ? shY+2 : shY+18;
+  if(p.weapon===1){
+    ctx.lineWidth=4; ctx.strokeStyle='#3a4a66';
+    ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(handX + dir*30, handY-4); ctx.stroke();
+  } else if(p.weapon===2){
+    ctx.fillStyle='#3a4a66';
+    ctx.fillRect(dir>0?handX:handX-18, handY-4, 18, 7);
+  }
+  ctx.restore();
+
+  if(p.atkTimer>0){
+    const wep=WEAPONS[p.weapon];
+    if(wep.melee){
+      const hx = dir>0 ? x+w : x-wep.range;
+      ctx.fillStyle = p.weapon===1? 'rgba(90,130,240,.28)' : 'rgba(245,180,60,.30)';
+      ctx.fillRect(hx, yy+18, wep.range, h-34);
+    }
+  }
+
+  ctx.font='bold 15px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='center';
+  const label = WEAPONS[p.weapon].name;
+  ctx.fillStyle='#ffffff'; ctx.fillRect(cx-20, yy-28, 40, 20);
+  ctx.strokeStyle=col; ctx.lineWidth=2; ctx.strokeRect(cx-20, yy-28, 40, 20);
+  ctx.fillStyle=col;
+  ctx.fillText(label, cx, yy-13);
+}
+
+function drawHUD(p, x, y, right){
+  const bw=360, bh=24;
+  ctx.font='bold 17px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign = right?'right':'left';
+  ctx.fillStyle=p.color;
+  ctx.fillText(pname(p) + (p.ai?' (电脑)':''), right? x+bw : x, y-6);
+  ctx.fillStyle=p.color; ctx.fillRect(x-2,y-2,bw+4,bh+4);
+  ctx.fillStyle='#ffe3e3'; ctx.fillRect(x,y,bw,bh);
+  const hpw = Math.max(0, bw*(p.hp/p.maxHp));
+  ctx.fillStyle = p.hp/p.maxHp>0.3? '#22b866':'#e5484d';
+  ctx.fillRect(right? x+bw-hpw : x, y, hpw, bh);
+  ctx.fillStyle='#12331f'; ctx.font='bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText(Math.ceil(p.hp)+' / '+p.maxHp, x+bw/2, y+17);
+  const ey=y+bh+7, ebh=10;
+  ctx.fillStyle='#9fb0d0'; ctx.fillRect(x-2,ey-2,bw+4,ebh+4);
+  ctx.fillStyle='#e7edf7'; ctx.fillRect(x,ey,bw,ebh);
+  const enw = bw*(p.energy/p.maxEnergy);
+  ctx.fillStyle = p.energy>=SKILL.cost? '#f5b301':'#d9c48a';
+  ctx.fillRect(right? x+bw-enw : x, ey, enw, ebh);
+  ctx.textAlign = right?'right':'left';
+  ctx.fillStyle='#b57d00'; ctx.font='bold 15px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('金币 '+p.coins+'   胜 '+p.wins, right? x+bw : x, ey+26);
+  ctx.fillStyle='#2f4a7a'; ctx.font='bold 15px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillText('攻'+p.lv.atk+'  防'+p.lv.def+'  血'+p.lv.hp+'  速'+p.lv.speed, right? x+bw : x, ey+46);
+}
+
+/* ================= 结算 → 奖励 ================= */
+function goReward(){
+  players.forEach(p=>{ p.ready=false; p.drew=false; p.prize=''; p.spinning=false; });
+  const loser = winner===P1?P2:P1;
+  const winEarn = 120 + Math.round((winner.hp/winner.maxHp)*80);
+  const loseEarn = 55;
+  winner.coins += winEarn; loser.coins += loseEarn;
+  winner.wins  += 1;
+  winner._earn = winEarn; loser._earn = loseEarn;
+  renderReward();
+  setState('reward');
+  if(gameMode==='pve'){ doDraw(P2); P2.ready = true; renderReward(); }
+}
+function renderReward(){
+  players.forEach(p=>{
+    const root = document.getElementById(p.id===1?'rw1':'rw2');
+    const tagEl = root.querySelector('.htag'); if(tagEl) tagEl.textContent = pname(p);
+    root.querySelector('.rw-earn').textContent  = '+'+ (p._earn||0);
+    root.querySelector('.rw-total').textContent = p.coins;
+    root.querySelector('.rw-wins').textContent  = p.wins;
+    root.querySelector('.rw-reel').textContent  = p.prize || '?';
+    root.querySelector('.rw-ready').textContent = p.ready? '✔ 已准备' : '';
+    if(p===winner) root.querySelector('.rw-reel').classList.remove('spin');
+  });
+}
+
+/* 抽奖 */
+const PRIZES = [
+  { t:'金币', v:120, c:'#ffd23f' },
+  { t:'金币', v:60,  c:'#ffd23f' },
+  { t:'金币', v:200, c:'#ffd23f' },
+  { t:'幸运属性', attr:true, c:'#48e08b' },
+  { t:'金币', v:90,  c:'#ffd23f' },
+  { t:'能量石', v:80, c:'#ffd23f' },
+];
+function doDraw(p){
+  if(p.drew || p.spinning) return;
+  p.spinning=true;
+  const root = document.getElementById(p.id===1?'rw1':'rw2');
+  const reel = root.querySelector('.rw-reel');
+  reel.classList.add('spin');
+  let n=0; const total=16 + Math.floor(Math.random()*6);
+  const iv=setInterval(()=>{
+    const pr = PRIZES[Math.floor(Math.random()*PRIZES.length)];
+    reel.textContent = pr.attr? '★属性★' : ('+'+pr.v+' 币');
+    n++;
+    if(n>=total){
+      clearInterval(iv);
+      const pr = PRIZES[Math.floor(Math.random()*PRIZES.length)];
+      p.spinning=false; p.drew=true;
+      if(pr.attr){
+        const a = ATTRS[Math.floor(Math.random()*ATTRS.length)];
+        if(p.lv[a.key]<a.max) p.lv[a.key]++;
+        p.prize = '★'+a.name+'+1';
+      } else {
+        p.coins += pr.v; p.prize = '+'+pr.v+'币';
+      }
+      reel.classList.remove('spin');
+      renderReward();
+    }
+  }, 90);
+}
+
+/* ================= 升级 / 升级内部 ================= */
+function goUpgrade(){
+  players.forEach(p=>{ p.ready=false; p.upMode='list'; p.sel=0; });
+  if(gameMode==='pve') aiUpgrade(P2);
+  renderUpgrade();
+  setState('upgrade');
+}
+function aiUpgrade(p){
+  let buys = 1 + Math.floor(Math.random()*3);
+  while(buys-- > 0){
+    const options = ATTRS.filter(a=> p.lv[a.key]<a.max && p.coins>=costOf(p.lv[a.key]));
+    if(!options.length) break;
+    const a = options[Math.floor(Math.random()*options.length)];
+    p.coins -= costOf(p.lv[a.key]);
+    p.lv[a.key]++;
+  }
+  p.ready = true;
+}
+function statPreview(p, a){
+  const lv=p.lv[a.key], nl=lv+1;
+  switch(a.key){
+    case 'atk':   return ['伤害系数 x'+atkMulOf(lv).toFixed(2), 'x'+atkMulOf(nl).toFixed(2)];
+    case 'def':   return ['减伤 '+Math.round(defCutOf(lv)*100)+'%', Math.round(defCutOf(nl)*100)+'%'];
+    case 'hp':    return ['最大生命 '+maxHpOf(lv), ''+maxHpOf(nl)];
+    case 'speed': return ['移速 '+moveSpeedOf(lv).toFixed(1), ''+moveSpeedOf(nl).toFixed(1)];
+  }
+}
+function renderUpgrade(){
+  players.forEach(p=>{
+    const root = document.getElementById(p.id===1?'up1':'up2');
+    const tag  = pname(p);
+    const pcls = p.id===1?'P1':'P2';
+    const kk = KEYS[p.id];
+    const kU=(kk.up+'').toUpperCase(), kD=(kk.down+'').toUpperCase(),
+          kA=(kk.atk+'').toUpperCase(), kS=(kk.skill+'').toUpperCase(),
+          kR=(kk.w0+'').toUpperCase();
+
+    if(p.ai){
+      let rows='';
+      ATTRS.forEach((a)=>{
+        const lv=p.lv[a.key];
+        let pips=''; for(let j=0;j<a.max;j++) pips+='<span class="pip'+(j<lv?' f':'')+'"></span>';
+        rows += `<div class="attr zh"><span>${a.name}</span><span class="bars">${pips}</span><span class="lv">Lv.${lv}</span></div>`;
+      });
+      root.innerHTML = `
+        <div class="htag zh">${tag}</div><div class="htag2">${pcls}</div>
+        <h2 class="zh">电脑已升级</h2>
+        <div class="attrlist">${rows}</div>
+        <div class="ready-badge">✔ 电脑已准备</div>
+        <div class="footbar"><span class="zh">金币 <b class="coinbadge">${p.coins}</b></span><span class="zh">等待你继续</span></div>`;
+      return;
+    }
+
+    if(p.upMode==='list'){
+      let rows='';
+      ATTRS.forEach((a,i)=>{
+        const lv=p.lv[a.key];
+        let pips=''; for(let j=0;j<a.max;j++) pips+='<span class="pip'+(j<lv?' f':'')+'"></span>';
+        const cost = lv>=a.max? 'MAX' : (costOf(lv)+'币');
+        rows += `<div class="attr zh ${i===p.sel?'sel':''}">
+            <span>${a.name}</span>
+            <span class="bars">${pips}</span>
+            <span class="lv">Lv.${lv} · ${cost}</span>
+          </div>`;
+      });
+      root.innerHTML = `
+        <div class="htag zh">${tag}</div><div class="htag2">${pcls}</div>
+        <h2 class="zh">升级属性</h2>
+        <div class="attrlist">${rows}</div>
+        <div class="ready-badge">${p.ready?'✔ 已准备 · 等待对手':''}</div>
+        <div class="footbar">
+          <span class="zh">金币 <b class="coinbadge">${p.coins}</b></span>
+          <span class="zh"><b>${kU}/${kD}</b>选 <b>${kA}</b>升级 <b>${kR}</b>准备 · <b>回车</b>继续</span>
+        </div>`;
+    } else {
+      const a=ATTRS[p.sel], lv=p.lv[a.key];
+      const [cur,next]=statPreview(p,a);
+      const isMax = lv>=a.max;
+      const cost = costOf(lv);
+      const can = !isMax && p.coins>=cost;
+      root.innerHTML = `
+        <div class="htag zh">${tag}</div><div class="htag2">${pcls}</div>
+        <h2 class="zh">属性详情</h2>
+        <div class="detail">
+          <div class="dname zh">${a.name} Lv.${lv}</div>
+          <div class="drow zh">${a.desc}</div>
+          <div class="drow zh">当前：${cur}</div>
+          ${isMax? '<div class="drow up zh">已满级 MAX</div>'
+                 : `<div class="drow zh">升级后：<span class="up">${next}</span></div>
+                    <div class="drow zh">花费：<span class="cost">${cost} 币</span> ${can?'':'<span class="no">（金币不足）</span>'}</div>`}
+        </div>
+        <div class="footbar">
+          <span class="zh">金币 <b class="coinbadge">${p.coins}</b></span>
+          <span class="zh"><b>${kA}</b>${isMax?'返回':'升级'} <b>${kS}</b>返回</span>
+        </div>`;
+    }
+  });
+}
+
+/* 升级界面输入 */
+function upgradeEdge(kk){
+  let changed=false;
+  for(const p of players){
+    if(p.ai) continue;
+    const k=KEYS[p.id];
+    if(p.upMode==='list'){
+      if(kk===k.up){   p.sel=(p.sel+ATTRS.length-1)%ATTRS.length; changed=true; }
+      if(kk===k.down){ p.sel=(p.sel+1)%ATTRS.length; changed=true; }
+      if(kk===k.atk){  p.upMode='detail'; changed=true; }
+      if(kk===k.w0 || kk===k.w1 || kk===k.w2){ p.ready=!p.ready; changed=true; }
+    } else {
+      if(kk===k.skill){ p.upMode='list'; changed=true; }
+      if(kk===k.atk){
+        const a=ATTRS[p.sel], lv=p.lv[a.key], cost=costOf(lv);
+        if(lv>=a.max){ p.upMode='list'; }
+        else if(p.coins>=cost){ p.coins-=cost; p.lv[a.key]++; }
+        changed=true;
+      }
+    }
+  }
+  if(changed) renderUpgrade();
+  if(P1.ready && P2.ready){ goMenu(); }   // 本关结束 → 重新选择模式
+}
+
+/* 奖励界面输入 */
+function rewardEdge(kk){
+  let changed=false;
+  for(const p of players){
+    if(p.ai) continue;
+    const k=KEYS[p.id];
+    if(kk===k.skill){ doDraw(p); }
+    if(kk===k.w0 || kk===k.w1 || kk===k.w2){ p.ready=true; changed=true; }
+  }
+  if(changed) renderReward();
+  if(P1.ready && P2.ready){ goUpgrade(); }
+}
+
+/* ================= 全局输入 ================= */
+const ALL_KEYS = new Set();
+[1,2].forEach(id=>Object.values(KEYS[id]).forEach(v=>ALL_KEYS.add(v)));
+
+window.addEventListener('keydown', e=>{
+  const kk = e.key.toLowerCase();
+  if(ALL_KEYS.has(kk) || kk===' ' || kk==='enter') e.preventDefault();
+
+  if(state==='menu'){
+    if(kk===' '||kk==='enter'){ startGame('pvp'); }
+    return;
+  }
+  if(kk===' '||kk==='enter'){
+    if(state==='reward'){ P1.ready=P2.ready=true; goUpgrade(); return; }
+    if(state==='upgrade'){ P1.ready=P2.ready=true; goMenu(); return; }
+  }
+  if(e.repeat) { held.add(kk); return; }
+  held.add(kk);
+
+  if(state==='fight')   fightEdge(kk);
+  else if(state==='reward')  rewardEdge(kk);
+  else if(state==='upgrade') upgradeEdge(kk);
+});
+window.addEventListener('keyup', e=> held.delete(e.key.toLowerCase()));
+window.addEventListener('blur', ()=> held.clear());
+
+/* 选择模式按钮（开局 & 每关结束都用同一套） */
+document.getElementById('btnPvp').addEventListener('click', ()=> startGame('pvp'));
+document.getElementById('btnPve').addEventListener('click', ()=> startGame('pve'));
+
+/* ================= 主循环 ================= */
+function loop(){
+  requestAnimationFrame(loop);
+  if(state==='fight'){ updateFight(); drawFight(); }
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
